@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="description" content="Reagent Stock Manager V1 - Atellica reagent stock control">
+  <link rel="manifest" href="manifest.json">
+  <title>Reagent Stock Manager V1</title>
+  <style>
+    :root{--primary:#0f766e;--primary2:#115e59;--bg:#f4f7f7;--card:#fff;--text:#17313a;--muted:#64748b;--border:#dbe4e7;--danger:#dc2626;--warn:#d97706;--ok:#15803d}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    header{background:linear-gradient(135deg,var(--primary2),var(--primary));color:white;padding:20px 18px 18px;position:sticky;top:0;z-index:5;box-shadow:0 3px 12px #0002}
+    header .top{display:flex;justify-content:space-between;align-items:center;gap:12px;max-width:1100px;margin:auto} h1{font-size:22px;margin:0} header small{opacity:.85}
+    main{max-width:1100px;margin:auto;padding:16px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px;box-shadow:0 2px 7px #0000000a}
+    .stat b{font-size:26px;display:block;margin-top:4px}.label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+    button,input,select{font:inherit} button{border:0;border-radius:10px;padding:10px 13px;cursor:pointer}.primary{background:var(--primary);color:white}.secondary{background:white;border:1px solid var(--border);color:var(--text)}.danger{background:#fee2e2;color:#991b1b}
+    input,select{width:100%;padding:10px;border:1px solid var(--border);border-radius:9px;background:white}.search{flex:1;min-width:220px}
+    .table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;min-width:760px}.table th,.table td{padding:11px 9px;border-bottom:1px solid var(--border);text-align:left;font-size:13px}.table th{font-size:12px;color:var(--muted);background:#f8fafb;position:sticky;top:0}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.bad{background:#fee2e2;color:#991b1b}
+    .section{margin-top:16px}.section h2{font-size:16px;margin:0 0 10px}.empty{padding:30px;text-align:center;color:var(--muted)}
+    .modal{display:none;position:fixed;inset:0;background:#0008;z-index:20;padding:18px;align-items:center;justify-content:center}.modal.open{display:flex}.modal-box{background:white;border-radius:16px;width:min(520px,100%);max-height:90vh;overflow:auto;padding:18px}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.modal-head h3{margin:0}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:15px}
+    .tabs{display:flex;gap:6px;margin-top:14px}.tab{background:#ffffff22;color:white;border:1px solid #ffffff44}.tab.active{background:white;color:var(--primary2)}
+    footer{text-align:center;color:var(--muted);font-size:11px;padding:25px}
+    @media(max-width:720px){.grid{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}header{position:static}.table{min-width:720px}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div><h1>🧪 Reagent Stock Manager</h1><small>Atellica • V1</small></div>
+    <button class="secondary" id="installBtn" style="display:none">Install App</button>
+  </div>
+  <div class="top tabs">
+    <button class="tab active" data-tab="stock">Stock</button>
+    <button class="tab" data-tab="history">History</button>
+    <button class="tab" data-tab="backup">Backup</button>
+  </div>
+</header>
+
+<main>
+  <section id="stockTab">
+    <div class="grid">
+      <div class="card stat"><span class="label">Reagents</span><b id="statReagents">0</b></div>
+      <div class="card stat"><span class="label">Low Stock</span><b id="statLow">0</b></div>
+      <div class="card stat"><span class="label">Expiring ≤30d</span><b id="statExpiring">0</b></div>
+      <div class="card stat"><span class="label">Expired</span><b id="statExpired">0</b></div>
+    </div>
+
+    <div class="toolbar">
+      <input class="search" id="search" placeholder="Search reagent, code or lot number...">
+      <button class="primary" id="addBtn">＋ Add Reagent</button>
+    </div>
+
+    <div class="card table-wrap">
+      <table class="table">
+        <thead><tr><th>Reagent</th><th>Code</th><th>Lot</th><th>Expiry</th><th>Balance</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="stockBody"></tbody>
+      </table>
+      <div class="empty" id="emptyStock" style="display:none">No reagent records yet.</div>
+    </div>
+  </section>
+
+  <section id="historyTab" style="display:none">
+    <div class="card">
+      <div class="toolbar"><input class="search" id="historySearch" placeholder="Search history..."><button class="secondary" id="clearHistory">Clear History</button></div>
+      <div class="table-wrap"><table class="table"><thead><tr><th>Date/Time</th><th>Reagent</th><th>Type</th><th>Qty</th><th>Balance</th><th>Note</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="backupTab" style="display:none">
+    <div class="card">
+      <h2 style="margin-top:0">Backup & Restore</h2>
+      <p style="color:var(--muted);font-size:13px">Data is stored separately in this browser under the Reagent Stock Manager V1 storage key. It is not shared with Novasaki Order Manager.</p>
+      <div class="toolbar">
+        <button class="primary" id="exportBtn">Export Backup</button>
+        <button class="secondary" id="importBtn">Import Backup</button>
+        <input type="file" id="fileInput" accept=".json" style="display:none">
+      </div>
+      <p style="font-size:12px;color:var(--muted)">Tip: keep a backup before changing phones or clearing browser/site data.</p>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="modal-head"><h3 id="modalTitle">Add Reagent</h3><button class="secondary" id="closeModal">✕</button></div>
+    <form id="reagentForm">
+      <div class="form-grid">
+        <label class="full">Reagent Name<input id="name" required placeholder="e.g. CA 19-9"></label>
+        <label>Reagent Code<input id="code" placeholder="e.g. 10315020"></label>
+        <label>Lot Number<input id="lot" required></label>
+        <label>Expiry Date<input id="expiry" type="date" required></label>
+        <label>Minimum Stock<input id="min" type="number" min="0" step="0.01" value="1"></label>
+        <label>Unit<select id="unit"><option>pack</option><option>kit</option><option>box</option><option>mL</option><option>test</option><option>other</option></select></label>
+        <label>Opening Balance<input id="qty" type="number" min="0" step="0.01" value="0"></label>
+        <label class="full">Note<input id="note" placeholder="Optional"></label>
+      </div>
+      <div class="actions"><button type="button" class="secondary" id="cancelModal">Cancel</button><button class="primary">Save Reagent</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="moveModal">
+  <div class="modal-box">
+    <div class="modal-head"><h3 id="moveTitle">Stock Movement</h3><button class="secondary" id="closeMove">✕</button></div>
+    <form id="moveForm">
+      <input id="moveId" type="hidden">
+      <label>Movement Type<select id="moveType"><option value="IN">Stock IN</option><option value="OUT">Stock OUT / Usage</option></select></label><br>
+      <label>Quantity<input id="moveQty" type="number" min="0.01" step="0.01" required></label><br>
+      <label>Note<input id="moveNote" placeholder="e.g. daily usage / new delivery"></label>
+      <div class="actions"><button type="button" class="secondary" id="cancelMove">Cancel</button><button class="primary">Save Movement</button></div>
+    </form>
+  </div>
+</div>
+
+<footer>Reagent Stock Manager V1 • Atellica Stock Control</footer>
+
+<script>
+const KEY = "REAGENT_STOCK_MANAGER_V1_DATA";
+let data = JSON.parse(localStorage.getItem(KEY) || '{"reagents":[],"history":[]}');
+let deferredPrompt = null;
+
+const $ = id => document.getElementById(id);
+const save = () => localStorage.setItem(KEY, JSON.stringify(data));
+const today = () => new Date().toISOString().slice(0,10);
+const daysTo = d => Math.ceil((new Date(d+"T23:59:59")-new Date())/86400000);
+
+function status(r){
+  const d=daysTo(r.expiry);
+  if(d<0) return ['Expired','bad'];
+  if(d<=30) return ['Expiring','warn'];
+  if(Number(r.qty)<=Number(r.min)) return ['Low stock','warn'];
+  return ['OK','ok'];
+}
+function render(){
+  const q=($("search").value||"").toLowerCase();
+  const rows=data.reagents.filter(r=>(r.name+" "+r.code+" "+r.lot).toLowerCase().includes(q));
+  $("statReagents").textContent=data.reagents.length;
+  $("statLow").textContent=data.reagents.filter(r=>Number(r.qty)<=Number(r.min)).length;
+  $("statExpiring").textContent=data.reagents.filter(r=>daysTo(r.expiry)>=0&&daysTo(r.expiry)<=30).length;
+  $("statExpired").textContent=data.reagents.filter(r=>daysTo(r.expiry)<0).length;
+  $("emptyStock").style.display=rows.length?"none":"block";
+  $("stockBody").innerHTML=rows.map(r=>{
+    const [s,c]=status(r);
+    return `<tr><td><b>${esc(r.name)}</b><br><small>${esc(r.unit)}</small></td><td>${esc(r.code||"-")}</td><td>${esc(r.lot)}</td><td>${r.expiry}</td><td><b>${r.qty}</b></td><td><span class="badge ${c}">${s}</span></td><td><button class="secondary" onclick="move('${r.id}')">IN / OUT</button></td></tr>`;
+  }).join("");
+  renderHistory();
+}
+function renderHistory(){
+  const q=($("historySearch").value||"").toLowerCase();
+  const rows=data.history.filter(h=>(h.name+" "+h.type+" "+(h.note||"")).toLowerCase().includes(q));
+  $("historyBody").innerHTML=rows.slice().reverse().map(h=>`<tr><td>${new Date(h.time).toLocaleString()}</td><td>${esc(h.name)}</td><td><span class="badge ${h.type==="IN"?"ok":"warn"}">${h.type}</span></td><td>${h.qty}</td><td>${h.balance}</td><td>${esc(h.note||"-")}</td></tr>`).join("") || '<tr><td colspan="6" class="empty">No history.</td></tr>';
+}
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+
+$("addBtn").onclick=()=>{ $("modalTitle").textContent="Add Reagent"; $("reagentForm").reset(); $("min").value=1; $("qty").value=0; $("modal").classList.add("open"); };
+["closeModal","cancelModal"].forEach(id=>$(id).onclick=()=> $("modal").classList.remove("open"));
+$("reagentForm").onsubmit=e=>{
+ e.preventDefault();
+ const r={id:crypto.randomUUID(),name:$("name").value.trim(),code:$("code").value.trim(),lot:$("lot").value.trim(),expiry:$("expiry").value,min:Number($("min").value||0),unit:$("unit").value,qty:Number($("qty").value||0),note:$("note").value.trim()};
+ data.reagents.push(r);
+ if(r.qty>0)data.history.push({time:new Date().toISOString(),name:r.name,type:"IN",qty:r.qty,balance:r.qty,note:"Opening balance"});
+ save();$("modal").classList.remove("open");render();
+};
+window.move=id=>{
+ const r=data.reagents.find(x=>x.id===id); if(!r)return;
+ $("moveId").value=id;$("moveQty").value="";$("moveNote").value="";$("moveTitle").textContent=r.name+" • Balance "+r.qty;$("moveModal").classList.add("open");
+};
+["closeMove","cancelMove"].forEach(id=>$(id).onclick=()=> $("moveModal").classList.remove("open"));
+$("moveForm").onsubmit=e=>{
+ e.preventDefault(); const r=data.reagents.find(x=>x.id===$("moveId").value); const qty=Number($("moveQty").value);
+ if(!r||!qty)return;
+ const type=$("moveType").value;
+ if(type==="OUT" && qty>Number(r.qty)){alert("Stock OUT cannot exceed current balance.");return}
+ r.qty=Number(r.qty)+(type==="IN"?qty:-qty);
+ data.history.push({time:new Date().toISOString(),name:r.name,type,qty,balance:r.qty,note:$("moveNote").value.trim()});
+ save();$("moveModal").classList.remove("open");render();
+};
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
+ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");
+ $("stockTab").style.display=b.dataset.tab==="stock"?"block":"none";
+ $("historyTab").style.display=b.dataset.tab==="history"?"block":"none";
+ $("backupTab").style.display=b.dataset.tab==="backup"?"block":"none";
+});
+$("search").oninput=render;$("historySearch").oninput=render;
+$("clearHistory").onclick=()=>{if(confirm("Clear all movement history? Stock balances will remain unchanged.")){data.history=[];save();render()}};
+$("exportBtn").onclick=()=>{
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);a.download="reagent-stock-manager-backup-"+today()+".json";a.click();URL.revokeObjectURL(a.href);
+};
+$("importBtn").onclick=()=>$("fileInput").click();
+$("fileInput").onchange=async e=>{
+ const f=e.target.files[0];if(!f)return;
+ try{const incoming=JSON.parse(await f.text());if(!Array.isArray(incoming.reagents)||!Array.isArray(incoming.history))throw Error();
+ if(confirm("Replace current Reagent Stock Manager data with this backup?")){data=incoming;save();render();alert("Backup restored.");}}
+ catch{alert("Invalid backup file.");} e.target.value="";
+};
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;$("installBtn").style.display="block"});
+$("installBtn").onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();deferredPrompt=null;$("installBtn").style.display="none"};
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+render();
+</script>
+</body>
+</html>
